@@ -18,8 +18,9 @@ summarization_number_baseline = 100
 summarization_number_eval = 100
 instruct = ".Preceding text is a imdb movie review.Please help summarize it."
 
-ppo_training_steps = 20
+ppo_training_steps = 0 
 ppo_rewards_textlen_threshhold = 500
+ppo_rewards_trunc = 0.50
 
 #load dataset imdb
 imdb = load_dataset(
@@ -111,14 +112,16 @@ for i in range(ppo_training_steps):
     response_tensor = ppo_trainer.generate([item for item in query_tensor], return_prompt=False, **generation_kwargs)
     response_txt = tokenizer.decode(response_tensor[0])
     #rewards 低于基线输出长度有rewards，越短越好
-    reward = 1.0 - min(ppo_rewards_textlen_threshhold,len(response_txt))/ppo_rewards_textlen_threshhold
-    print("train step: %d reward: %f \n" % (i,reward))
+    reward_o = 1.0 - min(ppo_rewards_textlen_threshhold,len(response_txt))/ppo_rewards_textlen_threshhold
+    reward = min(reward_o, ppo_rewards_trunc)
+    print("train step: %d reward_trunc: %f reward_o: %f \n" % (i,reward,reward_o))
     reward = [torch.tensor(reward, device=model.pretrained_model.device)]
 
-    #参数需要是list
+    #参数需要是list,抛弃re太大的动作
     train_stats = ppo_trainer.step([query_tensor[0]], [response_tensor[0]], reward)
 #save model
-model.save_pretrained(gemma_2b_it_ppo_local)
+if ppo_training_steps != 0:
+    model.save_pretrained(gemma_2b_it_ppo_local)
 
 #load trained model to summarize the comments
 peft_config = PeftConfig.from_pretrained(gemma_2b_it_ppo_local)
