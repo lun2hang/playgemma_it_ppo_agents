@@ -1,4 +1,45 @@
+from transformers import AutoTokenizer, pipeline
+import torch
+import bitsandbytes
+import accelerate
+
 #init gemma7b as reward model to score a joke 
+model = "/DATA/jupyter/personal/gemma-7b-it"
+
+tokenizer = AutoTokenizer.from_pretrained(model)
+rewards = pipeline(
+    "text-generation",
+    model=model,
+    model_kwargs={
+            "torch_dtype": torch.bfloat16,
+#            "quantization_config": {"load_in_4bit": True}
+        },
+    device="cuda",
+)
+
+'''
+    使用float16加载、量化加载
+    model_kwargs={
+            "torch_dtype": torch.bfloat16,
+            "quantization_config": {"load_in_4bit": True}
+        },
+'''
+joke = "cowboy, in the western United States, a horseman skilled at handling cattle"
+instruct = ".Please guess which website does the Preceding text come from:"
+
+messages = [
+    {"role": "user", "content": joke + instruct},
+]
+prompt = rewards.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+outputs = rewards(
+    prompt,
+    max_new_tokens=256,
+    do_sample=True,
+    temperature=0.7,
+    top_k=50,
+    top_p=0.95
+)
+print(outputs[0]["generated_text"][len(prompt):])
 
 #init both A B model as PEFT mode for rl
 
@@ -25,3 +66,5 @@
 #eval with reward model
 
 #end outer loop
+
+print("end")
