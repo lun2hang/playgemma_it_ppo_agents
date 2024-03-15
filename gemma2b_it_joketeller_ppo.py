@@ -25,7 +25,9 @@ rewards = pipeline(
         },
 '''
 joke = "cowboy, in the western United States, a horseman skilled at handling cattle"
-instruct = ".Please guess which website does the Preceding text come from:"
+instruct = ".Please classify the preceding text into three classes. zero means normal text,one means a joke,two means a very funny joke. The class of the preceding text is:"
+
+input_text = "can you distinguish a joke from normal text"
 
 messages = [
     {"role": "user", "content": joke + instruct},
